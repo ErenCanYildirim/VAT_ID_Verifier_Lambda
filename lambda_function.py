@@ -4,7 +4,6 @@ import xml.etree.ElementTree as ET
 from urllib.parse import quote
 import logging
 
-# Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -21,7 +20,6 @@ def lambda_handler(event, context):
     """
 
     try:
-        # Extract VAT number from event
         vat_input = event.get("vatNumber")
         if not vat_input:
             return {
@@ -34,7 +32,6 @@ def lambda_handler(event, context):
                 ),
             }
 
-        # Parse VAT number
         country_code, vat_number = parse_vat_number(vat_input)
 
         if not country_code or not vat_number:
@@ -48,18 +45,15 @@ def lambda_handler(event, context):
                 ),
             }
 
-        # Determine method
         method = event.get("method", "soap").lower()
 
         logger.info(f"Checking VAT {country_code}{vat_number} via {method}")
 
-        # Check VAT based on method
         if method == "rest":
             result = check_vat_vies_rest(country_code, vat_number)
         else:
             result = check_vat_vies_soap(country_code, vat_number)
 
-        # Return appropriate response
         if "error" in result:
             return {
                 "statusCode": 502,
@@ -95,13 +89,11 @@ def lambda_handler(event, context):
 
 
 def parse_vat_number(vat_number):
-    """Parse VAT number into country code and number parts"""
     vat_number = vat_number.strip().replace(" ", "").upper()
 
     if len(vat_number) < 3:
         return None, None
 
-    # Extract country code (first 2 characters)
     country_code = vat_number[:2]
     number = vat_number[2:]
 
@@ -109,21 +101,20 @@ def parse_vat_number(vat_number):
 
 
 def check_vat_vies_soap(country_code, vat_number):
-    """Check VAT using VIES SOAP API"""
     soap_envelope = f"""<?xml version="1.0" encoding="UTF-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
-               xmlns:tns1="urn:ec.europa.eu:taxud:vies:services:checkVat:types"
-               xmlns:impl="urn:ec.europa.eu:taxud:vies:services:checkVat">
-    <soap:Header>
-    </soap:Header>
-    <soap:Body>
-        <tns1:checkVat xmlns:tns1="urn:ec.europa.eu:taxud:vies:services:checkVat:types"
-                       xmlns="urn:ec.europa.eu:taxud:vies:services:checkVat:types">
-            <tns1:countryCode>{country_code}</tns1:countryCode>
-            <tns1:vatNumber>{vat_number}</tns1:vatNumber>
-        </tns1:checkVat>
-    </soap:Body>
-</soap:Envelope>"""
+    <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+                xmlns:tns1="urn:ec.europa.eu:taxud:vies:services:checkVat:types"
+                xmlns:impl="urn:ec.europa.eu:taxud:vies:services:checkVat">
+        <soap:Header>
+        </soap:Header>
+        <soap:Body>
+            <tns1:checkVat xmlns:tns1="urn:ec.europa.eu:taxud:vies:services:checkVat:types"
+                        xmlns="urn:ec.europa.eu:taxud:vies:services:checkVat:types">
+                <tns1:countryCode>{country_code}</tns1:countryCode>
+                <tns1:vatNumber>{vat_number}</tns1:vatNumber>
+            </tns1:checkVat>
+        </soap:Body>
+    </soap:Envelope>"""
 
     headers = {
         "Content-Type": "text/xml; charset=utf-8",
@@ -154,7 +145,7 @@ def check_vat_vies_soap(country_code, vat_number):
 
 
 def check_vat_vies_rest(country_code, vat_number):
-    """Check VAT using VIES REST API (unofficial but sometimes available)"""
+    """unofficial rest api -> sometimes available"""
     url = f"https://ec.europa.eu/taxation_customs/vies/rest-api/ms/{country_code}/vat/{quote(vat_number)}"
 
     headers = {"Accept": "application/json", "User-Agent": "AWS-Lambda-VAT-Checker/1.0"}
@@ -180,18 +171,14 @@ def check_vat_vies_rest(country_code, vat_number):
 
 
 def parse_vies_soap_response(xml_response):
-    """Parse SOAP XML response from VIES"""
     try:
-        # Parse XML
         root = ET.fromstring(xml_response)
 
-        # Define namespaces
         namespaces = {
             "soap": "http://schemas.xmlsoap.org/soap/envelope/",
             "ns2": "urn:ec.europa.eu:taxud:vies:services:checkVat:types",
         }
 
-        # Check for SOAP fault
         fault = root.find(".//soap:Fault", namespaces)
         if fault is not None:
             fault_string = fault.find("faultstring")
@@ -204,7 +191,6 @@ def parse_vies_soap_response(xml_response):
                 ),
             }
 
-        # Extract response data
         response_elem = root.find(".//ns2:checkVatResponse", namespaces)
         if response_elem is None:
             return {"error": "Invalid response", "message": "No checkVatResponse found"}
@@ -229,8 +215,6 @@ def parse_vies_soap_response(xml_response):
         logger.error(f"Response parse error: {str(e)}")
         return {"error": "Response Parse Error", "message": str(e)}
 
-
-# Test function for local development
 def test_lambda_locally():
     """Test function for local development"""
     # test_event = {
