@@ -33,12 +33,6 @@ jobs:
                 working_directory: '.'
                 format: sarif
                 soft_fail: true
-
-            - name: Upload SARIF 
-              uses: github/codeql-action/upload-sarif@v2
-              if: always()
-              with:
-                sarif_file: results.sarif
             
             - name: Run Terrascan
               uses: tenable/terrascan-action@main
@@ -47,3 +41,10 @@ jobs:
                 iac_version: 'v14'
                 policy_type: 'all'
                 only_warn: true
+
+            - name: Upload SARIF 
+              uses: github/codeql-action/upload-sarif@v3
+              if: always()
+              continue-on-error: true
+              with:
+                sarif_file: results.sarif
