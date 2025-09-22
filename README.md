@@ -2,3 +2,5 @@
 German VAT_ID Verification Lambda
 
 Example VAT_IDs: DE132490588 DE129274202
+
+Lambda function +

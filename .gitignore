@@ -134,3 +134,20 @@ cython_debug/
 *.zip
 
 *.log
+
+#Terraform
+
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+terraform.tfvars
+
+*.auto.tfvars
+
+.terraform/
+.terraform.lock.hcl
+
+.aws/
+
+*.log

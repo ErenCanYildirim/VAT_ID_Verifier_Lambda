@@ -1,0 +1,36 @@
+# terraform.tfvars.example
+# Copy this file to terraform.tfvars and customize the values
+
+# AWS Configuration
+aws_region = "eu-west-1"  # Change to your preferred region
+
+# Lambda Configuration
+lambda_function_name = "my-vat-checker-lambda"
+lambda_source_file   = "lambda_function.py"
+
+lambda_environment_variables = {
+  ENVIRONMENT = "production"
+  LOG_LEVEL   = "INFO"
+}
+
+# API Gateway Configuration
+api_gateway_name = "my-vat-checker-api"
+api_key_name     = "my-vat-api-key"
+
+# Rate Limiting
+api_rate_limit  = 50   # requests per second
+api_burst_limit = 100  # burst capacity
+api_quota_limit = 5000 # requests per day
+
+# Logging Configuration
+log_retention_days = 30
+enable_xray_tracing = true
+
+# Tags
+common_tags = {
+  Project     = "My-VAT-Checker"
+  Environment = "production"
+  Owner       = "your-name"
+  ManagedBy   = "Terraform"
+  CostCenter  = "engineering"
+}
