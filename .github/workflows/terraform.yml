@@ -1,0 +1,49 @@
+name: Terraform scanner
+
+on:
+    push:
+        branches: [ main, dev ]
+    pull_request:
+        branches: [ main ]
+
+jobs:
+    terraform-scan:
+        name: Scan Terraform files
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+
+            - name: Run Checkov
+              uses: bridgecrewio/checkov-action@master
+              continue-on-error: true
+              with:
+                directory: .
+                framework: terraform
+                output_format: cli
+                quiet: true
+             
+
+            - name: Run TFSec
+              uses: aquasecurity/tfsec-action@v1.0.0
+              continue-on-error: true
+              with:
+                working_directory: '.'
+                format: sarif
+                soft_fail: true
+
+            - name: Upload SARIF 
+              uses: github/codeql-action/upload-sarif@v2
+              if: always()
+              with:
+                sarif_file: results.sarif
+            
+            - name: Run Terrascan
+              uses: tenable/terrascan-action@main
+              with:
+                iac_type: 'terraform'
+                iac_version: 'v14'
+                policy_type: 'all'
+                only_warn: true
