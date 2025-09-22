@@ -132,6 +132,7 @@ cython_debug/
 
 # lambda deployment
 *.zip
+lambda_package/
 
 *.log
 
