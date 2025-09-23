@@ -21,9 +21,9 @@ def lambda_handler(event, context):
 
     try:
         # Handle API Gateway request format
-        if 'body' in event and event['body']:
+        if "body" in event and event["body"]:
             # Parse JSON from API Gateway body
-            body = json.loads(event['body'])
+            body = json.loads(event["body"])
             vat_input = body.get("vatNumber")
             method = body.get("method", "soap").lower()
         else:
@@ -34,9 +34,7 @@ def lambda_handler(event, context):
         if not vat_input:
             return {
                 "statusCode": 400,
-                "headers": {
-                    "Content-Type": "application/json"
-                },
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(
                     {
                         "error": "Missing vatNumber parameter",
@@ -50,9 +48,7 @@ def lambda_handler(event, context):
         if not country_code or not vat_number:
             return {
                 "statusCode": 400,
-                "headers": {
-                    "Content-Type": "application/json"
-                },
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(
                     {
                         "error": "Invalid VAT format",
@@ -71,9 +67,7 @@ def lambda_handler(event, context):
         if "error" in result:
             return {
                 "statusCode": 502,
-                "headers": {
-                    "Content-Type": "application/json"
-                },
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(
                     {
                         "error": "VIES Service Error",
@@ -86,9 +80,7 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json"
-            },
+            "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
                 {
                     "success": True,
@@ -104,9 +96,7 @@ def lambda_handler(event, context):
         logger.error(f"Lambda execution error: {str(e)}")
         return {
             "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json"
-            },
+            "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"error": "Internal server error", "message": str(e)}),
         }
 
@@ -237,6 +227,7 @@ def parse_vies_soap_response(xml_response):
     except Exception as e:
         logger.error(f"Response parse error: {str(e)}")
         return {"error": "Response Parse Error", "message": str(e)}
+
 
 def test_lambda_locally():
     """Test function for local development"""

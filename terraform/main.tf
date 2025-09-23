@@ -110,6 +110,10 @@ resource "aws_kms_alias" "logs_key_alias" {
 #get current AWS account id 
 data "aws_caller_identity" "current" {}
 
+resource "aws_iam_role_policy_attachment" "lambda_xray_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+  role       = aws_iam_role.lambda_role.name
+}
 
 resource "aws_iam_role" "lambda_role" {
   name = "${var.lambda_function_name}-role"
@@ -165,6 +169,10 @@ resource "aws_lambda_function" "vat_checker" {
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   kms_key_arn = aws_kms_key.lambda_key.arn 
+
+  tracing_config {
+    mode = var.enable_xray_tracing ? "Active" : "PassThrough"
+  }
 
   environment {
     variables = var.lambda_environment_variables

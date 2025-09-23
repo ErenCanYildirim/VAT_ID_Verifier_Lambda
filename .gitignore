@@ -152,3 +152,5 @@ terraform.tfvars
 .aws/
 
 *.log
+
+create_env_example.py
