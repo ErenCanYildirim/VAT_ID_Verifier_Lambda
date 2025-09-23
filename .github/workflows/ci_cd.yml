@@ -212,6 +212,7 @@ jobs:
             - name: Debug environment variables
               env:
                 API_GATEWAY_URL_PROD: ${{ secrets.API_GATEWAY_URL_PROD }}
+                API_GATEWAY_URL_TEST: ${{ secrets.API_GATEWAY_URL_TEST }}
                 API_KEY_VALUE: ${{ secrets.API_KEY_VALUE }}
                 AWS_REGION: ${{ secrets.AWS_REGION }}
               run: |
