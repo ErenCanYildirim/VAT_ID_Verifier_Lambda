@@ -129,6 +129,7 @@ cython_debug/
 .terraform.lock.hcl
 *.tfplan
 *.tfplan.*
+backend.conf*
 
 # lambda deployment
 *.zip

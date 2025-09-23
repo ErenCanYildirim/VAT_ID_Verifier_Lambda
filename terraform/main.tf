@@ -10,6 +10,10 @@ terraform {
       version = "~> 2.0"
     }
   }
+  backend "s3" {
+    key = "vat-checker/terraform.tfstate"
+    region = "eu-north-1"
+  }
 }
 
 provider "aws" {

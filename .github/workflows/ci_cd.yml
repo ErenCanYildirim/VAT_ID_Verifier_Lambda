@@ -73,7 +73,7 @@ jobs:
             
             - name: Terraform Init 
               working-directory: ./terraform
-              run: terraform init 
+              run: terraform init -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}"
 
             - name: Terraform Plan
               working-directory: ./terraform 
@@ -166,7 +166,7 @@ jobs:
 
             - name: Terraform Init
               working-directory: ./terraform
-              run: terraform init
+              run: terraform init -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}"
 
             - name: Terraform Plan (Prod)
               working-directory: ./terraform
