@@ -118,8 +118,8 @@ jobs:
 
             - name: Run integration tests on test environment
               env:
-                API_GATEWAY_URL_TEST: ${{ needs.deploy-to-test.outputs.api_url_test }}
-                API_KEY_VALUE: ${{ needs.deploy-to-test.outputs.api_key_value }}
+                API_GATEWAY_URL_TEST: ${{ secrets.API_GATEWAY_URL_TEST }}
+                API_KEY_VALUE: ${{ secrets.API_KEY_VALUE }}
                 AWS_REGION: ${{ secrets.AWS_REGION }}
               run: |
                 cd tests
@@ -211,8 +211,8 @@ jobs:
             
             - name: Run integration tests on prod. environment
               env:
-                API_GATEWAY_URL_PROD: ${{ needs.deploy-to-prod.outputs.api_url_prod }}
-                API_KEY_VALUE: ${{ needs.deploy-to-prod.outputs.api_key_value }}
+                API_GATEWAY_URL_PROD: ${{ secrets.API_GATEWAY_URL_PROD }}
+                API_KEY_VALUE: ${{ secrets.API_KEY_VALUE }}
                 AWS_REGION: ${{ secrets.AWS_REGION }}
               run: |
                 cd tests
