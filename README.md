@@ -63,7 +63,7 @@ Body:
 ``` 
 
 ```bash
-curl -X POST "https://your-api-gateway-url.amazonaws.com/prod/check-vat" \
+curl -X POST "https://<YOUR_URL>" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"vatNumber": "DE129274202", "method": "soap"}'
