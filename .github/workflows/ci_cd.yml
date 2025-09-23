@@ -208,21 +208,11 @@ jobs:
 
             - name: Wait for API to be ready
               run: sleep 30
-
-            - name: Debug environment variables
-              env:
-                API_GATEWAY_URL_PROD: ${{ secrets.API_GATEWAY_URL_PROD }}
-                API_GATEWAY_URL_TEST: ${{ secrets.API_GATEWAY_URL_TEST }}
-                API_KEY_VALUE: ${{ secrets.API_KEY_VALUE }}
-                AWS_REGION: ${{ secrets.AWS_REGION }}
-              run: |
-                echo "API_GATEWAY_URL_PROD='$API_GATEWAY_URL_PROD'"
-                echo "API_KEY_VALUE='$API_KEY_VALUE'"
-                echo "AWS_REGION='$AWS_REGION'"
             
             - name: Run integration tests on prod. environment
               env:
                 API_GATEWAY_URL_PROD: ${{ secrets.API_GATEWAY_URL_PROD }}
+                API_GATEWAY_URL_TEST: ${{ secrets.API_GATEWAY_URL_TEST }}
                 API_KEY_VALUE: ${{ secrets.API_KEY_VALUE }}
                 AWS_REGION: ${{ secrets.AWS_REGION }}
               run: |
