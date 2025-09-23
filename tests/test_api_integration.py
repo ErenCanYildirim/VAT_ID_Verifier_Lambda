@@ -3,7 +3,6 @@ import json
 import time
 import os
 from dotenv import load_dotenv
-import pytest
 from typing import Dict, Any
 
 load_dotenv()
@@ -33,7 +32,7 @@ class VATCheckerAPITest:
             )
             return response
         except requests.RequestException as e:
-            pytest.fail(f"API request failed: {e}")
+            raise Exception(f"API request failed: {e}") 
 
     def test_api_authentication(self):
         response = self.make_api_request(
@@ -128,7 +127,8 @@ class VATCheckerAPITest:
 
     def test_production_endpoint(self):
         if not self.api_url_prod:
-            pytest.skip("Production URL not available")
+            print("Production URL not available")
+            return
 
         response = self.make_api_request(
             self.api_url_prod, {"vatNumber": "NL123456789B01"}
@@ -151,7 +151,7 @@ class VATCheckerAPITest:
         try:
             data = response.json()
         except json.JSONDecodeError:
-            pytest.fail("Response should be valid JSON")
+            raise Exception("Response should be valid JSON")
 
     def test_performance(self):
         start_time = time.time()
