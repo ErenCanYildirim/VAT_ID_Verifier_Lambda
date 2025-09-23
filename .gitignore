@@ -155,3 +155,5 @@ terraform.tfvars
 *.log
 
 create_env_example.py
+
+encryption.json
