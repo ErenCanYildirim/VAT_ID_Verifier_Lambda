@@ -34,3 +34,6 @@ common_tags = {
   ManagedBy   = "Terraform"
   CostCenter  = "engineering"
 }
+
+enable_api_caching = true 
+api_cache_cluster_size = "0.5"

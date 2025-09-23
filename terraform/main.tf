@@ -22,6 +22,95 @@ data "archive_file" "lambda_zip" {
   output_path = "${var.lambda_function_name}.zip"
 }
 
+resource "aws_kms_key" "lambda_key" {
+  description = "KMS key for Lambda function encryption"
+  deletion_window_in_days = 7 
+  enable_key_rotation = true 
+
+  tags = merge(var.common_tags, {
+    Name = "${var.lambda_function_name}-lambda-key"
+  })
+}
+
+resource "aws_kms_alias" "lambda_key_alias" {
+  name = "alias/${var.lambda_function_name}-lambda"
+  target_key_id = aws_kms_key.lambda_key.key_id 
+}
+
+resource "aws_kms_key" "logs_key" {
+  description = "KMS key for CloudWatch logs encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation = true 
+
+  policy = jsonencode({
+    Version ="2012-10-17"
+    Statement = [
+      {
+        Sid = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action = "kms:*"
+        Resource = "*"
+      }, 
+      {
+        Sid: "Allow CloudWatch Logs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnEquals = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_function_name}"
+          }
+        }
+      },
+      {
+        Sid    = "Allow API Gateway Logs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnEquals = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/api-gateway/${var.api_gateway_name}"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = merge(var.common_tags, {
+    Name = "${var.lambda_function_name}-logs-key"
+  })
+}
+
+resource "aws_kms_alias" "logs_key_alias" {
+  name = "alias/${var.lambda_function_name}-logs"
+  target_key_id = aws_kms_key.logs_key.key_id 
+}
+
+#get current AWS account id 
+data "aws_caller_identity" "current" {}
+
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.lambda_function_name}-role"
 
@@ -41,6 +130,26 @@ resource "aws_iam_role" "lambda_role" {
   tags = var.common_tags
 }
 
+#iam policy for kms access
+resource "aws_iam_role_policy" "lambda_kms_policy" {
+  name = "${var.lambda_function_name}-kms-policy"
+  role = aws_iam_role.lambda_role.id 
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = aws_kms_key.lambda_key.arn 
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   role       = aws_iam_role.lambda_role.name
@@ -54,6 +163,8 @@ resource "aws_lambda_function" "vat_checker" {
   runtime         = "python3.11"
   timeout         = 30
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  kms_key_arn = aws_kms_key.lambda_key.arn 
 
   environment {
     variables = var.lambda_environment_variables
@@ -70,6 +181,7 @@ resource "aws_lambda_function" "vat_checker" {
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${var.lambda_function_name}"
   retention_in_days = var.log_retention_days
+  kms_key_id = aws_kms_key.logs_key.arn 
   tags              = var.common_tags
 }
 
@@ -179,6 +291,9 @@ resource "aws_api_gateway_stage" "test" {
   rest_api_id   = aws_api_gateway_rest_api.vat_api.id
   stage_name    = "test"
 
+  cache_cluster_enabled = var.enable_api_caching
+  cache_cluster_size = var.api_cache_cluster_size
+
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
     format = jsonencode({
@@ -207,6 +322,10 @@ resource "aws_api_gateway_stage" "prod" {
   rest_api_id   = aws_api_gateway_rest_api.vat_api.id
   stage_name    = "prod"
 
+  cache_cluster_enabled = var.enable_api_caching
+  cache_cluster_size = var.api_cache_cluster_size
+
+
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
     format = jsonencode({
@@ -233,6 +352,7 @@ resource "aws_api_gateway_stage" "prod" {
 resource "aws_cloudwatch_log_group" "api_gateway_logs" {
   name              = "/aws/api-gateway/${var.api_gateway_name}"
   retention_in_days = var.log_retention_days
+  kms_key_id = aws_kms_key.logs_key.arn 
   tags              = var.common_tags
 }
 

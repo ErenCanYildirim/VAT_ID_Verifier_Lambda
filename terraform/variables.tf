@@ -39,7 +39,7 @@ variable "api_key_name" {
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type = number 
-  default = 14
+  default = 180
 }
 
 variable "api_rate_limit" {
@@ -73,5 +73,23 @@ variable "common_tags" {
     Project = "VAT-Checker"
     Environment = "development"
     ManagedBy = "Terraform"
+  }
+}
+
+#api gw caching
+variable "enable_api_caching" {
+  description = "Enable caching for API GW stages"
+  type = bool
+  default = true 
+}
+
+variable "api_cache_cluster_size" {
+  description = "Size of the cache cluster for API GW"
+  type = string
+  default = "0.5"
+
+  validation {
+    condition = contains(["0.5", "1.6", "6.1", "13.5", "28.4", "58.2", "118", "237"], var.api_cache_cluster_size)
+    error_message = "Cache cluster size must be one of: 0.5, 1.6, 6.1, 13.5, 28.4, 58.2, 118, 237."
   }
 }
