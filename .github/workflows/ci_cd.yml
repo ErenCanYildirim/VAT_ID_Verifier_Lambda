@@ -1,0 +1,219 @@
+name: CI/CD Pipeline
+
+on:
+    push:
+        branches: [dev, main]
+    pull_request:
+        branches: [dev, main]
+
+env:
+    AWS_REGION: ${{ secrets.AWS_REGION }}
+    TERRAFORM_VERSION: "1.0.0"
+
+jobs:
+    unit-tests:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
+
+            - name: Install dependencies
+              run: |    
+                python -m pip install --upgrade pip 
+                pip install -r requirements.txt 
+                pip install pytest pytest-cov
+
+            - name: Run unit tests
+              run: |
+                cd tests
+                python -m pytest unit_test.py -v --cov=../lambda_function --cov-report=term-missing
+
+    deploy-to-test:
+        runs-on: ubuntu-latest
+        needs: unit-tests
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
+
+            - name: Install dependencies
+              run: |
+                python -m pip install --upgrade pip
+                pip install -r requirements.txt
+
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+                aws-secret-access-key: ${{secrets.AWS_SECRET_ACCESS_KEY }}
+                aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Create Lambda package
+              run: |
+                mkdir -p lambda_package
+                cp lambda_function.py lambda_package/
+                cd lambda_package
+                pip install -r ../requirements.txt -t .
+                cd ..
+            
+            - name: Terraform Init 
+              working-directory: ./terraform
+              run: terraform init 
+
+            - name: Terraform Plan
+              working-directory: ./terraform 
+              run: terraform plan -out=tfplan-test
+
+            - name: Terraform Apply (Test)
+              working-directory: ./terraform
+              run: terraform apply -auto-approve tfplan-test
+
+            - name: Get API GW URLs and Keys
+              working-directory: ./terraform
+              id: terraform-outputs
+              run: |
+                echo "api_url_test=https://$(terraform output -raw api_gateway_id).execute-api.${{ secrets.AWS_REGION }}.amazonaws.com/test/check-vat" >> $GITHUB_OUTPUT
+                echo "api_key_value=$(terraform output -raw api_key_value)" >> $GITHUB_OUTPUT
+
+        outputs:
+            api_url_test: ${{ steps.terraform-outputs.outputs.api_url_test }}
+            api_key_value: ${{ steps.terraform-outputs.outputs.api_key_value }}
+
+    integration-tests-test:
+        runs-on: ubuntu-latest
+        needs: deploy-to-test
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
+
+            - name: Install dependencies
+              run: |
+                python -m pip install --upgrade pip 
+                pip install -r requirements.txt
+                pip install pytest
+
+            - name: Wait for API to be ready
+              run: sleep 30
+
+            - name: Run integration tests on test environment
+              env:
+                API_GATEWAY_URL_TEST: ${{ needs.deploy-to-test.outputs.api_url_test }}
+                API_KEY_VALUE: ${{ needs.deploy-to-test.outputs.api_key_value }}
+                AWS_REGION: ${{ secrets.AWS_REGION }}
+              run: |
+                cd tests
+                python -m pytest test_api_integration.py -v --tb=short
+
+    deploy-to-prod:
+        runs-on: ubuntu-latest
+        needs: [deploy-to-test, integration-tests-test]
+        if: github.ref == 'refs/heads/main'
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
+
+            - name: Install dependencies
+              run: |
+                python -m pip install --upgrade pip 
+                pip install -r requirements.txt
+
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+            
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                aws-region: ${{ secrets.AWS_REGION }}
+            
+            - name: Create Lambda package
+              run: |
+                mkdir -p lambda_package
+                cp lambda_function.py lambda_package/
+                cd lambda_package
+                pip install -r ../requirements.txt -t .
+                cd ..
+
+            - name: Terraform Init
+              working-directory: ./terraform
+              run: terraform init
+
+            - name: Terraform Plan (Prod)
+              working-directory: ./terraform
+              run: terraform plan -out=tfplan-prod
+
+            - name: Terraform Apply (Prod)
+              working-directory: ./terraform
+              run: terraform apply -auto-approve tfplan-prod
+
+            - name: Get Production API GW URLs and Keys
+              working-directory: ./terraform
+              id: terraform-outputs-prod
+              run: |
+                echo "api_url_prod=https://$(terraform output -raw api_gateway_id).execute-api.${{ secrets.AWS_REGION }}.amazonaws.com/prod/check-vat" >> $GITHUB_OUTPUT
+                echo "api_key_value=$(terraform output -raw api_key_value)" >> $GITHUB_OUTPUT
+            
+        outputs:
+            api_url_prod: ${{ steps.terraform-outputs-prod.outputs.api_url_prod }}
+            api_key_value: ${{ steps.terraform-outputs-prod.outputs.api_key_value }}
+
+    integration-tests-prod:
+        runs-on: ubuntu-latest
+        needs: deploy-to-prod
+        if: github.ref == 'refs/heads/main'
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set Up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
+
+            - name: Install dependencies
+              run: |
+                python -m pip install --upgrade pip
+                pip install -r requirements.txt
+                pip install pytest
+
+            - name: Wait for API to be ready
+              run: sleep 30
+            
+            - name: Run integration tests on prod. environment
+              env:
+                API_GATEWAY_URL_PROD: ${{ needs.deploy-to-prod.outputs.api_url_prod }}
+                API_KEY_VALUE: ${{ needs.deploy-to-prod.outputs.api_key_value }}
+                AWS_REGION: ${{ secrets.AWS_REGION }}
+              run: |
+                cd tests
+                python -m pytest test_api_integration.py -v --tb=short            
