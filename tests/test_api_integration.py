@@ -32,7 +32,7 @@ class VATCheckerAPITest:
             )
             return response
         except requests.RequestException as e:
-            raise Exception(f"API request failed: {e}") 
+            raise Exception(f"API request failed: {e}")
 
     def test_api_authentication(self):
         response = self.make_api_request(
