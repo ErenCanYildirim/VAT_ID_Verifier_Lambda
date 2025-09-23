@@ -123,7 +123,7 @@ jobs:
                 AWS_REGION: ${{ secrets.AWS_REGION }}
               run: |
                 cd tests
-                python -m pytest test_api_integration.py -v --tb=short
+                python test_api_integration.py
 
     deploy-to-prod:
         runs-on: ubuntu-latest
@@ -216,4 +216,4 @@ jobs:
                 AWS_REGION: ${{ secrets.AWS_REGION }}
               run: |
                 cd tests
-                python -m pytest test_api_integration.py -v --tb=short            
+                python test_api_integration.py      
