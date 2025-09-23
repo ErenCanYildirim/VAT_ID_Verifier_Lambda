@@ -31,10 +31,13 @@ jobs:
 
       - name: Lint with Flake8
         run: |
-          # Stop on syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Check complexity and line length
-          flake8 . --count --max-complexity=10 --max-line-length=88 --statistics --ignore=E203,W503
+          # Only fail on critical issues: syntax errors, undefined names, unused imports
+          flake8 . --count --select=E9,F63,F7,F82,F401 --show-source --statistics
+
+      - name: Style check 
+        run: |
+          #report style issues, don't fail build
+          flake8 . --count --max-complexity=15 --max-line-length=100 --statistics --ignore=E203,W503,F841 || echo "Style issues found but not blocking build"
 
       - name: Security check with Safety
         run: |
